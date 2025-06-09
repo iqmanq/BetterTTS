@@ -6,8 +6,49 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		863114562DEE361F00A063B7 /* Accessibility.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 863114552DEE361E00A063B7 /* Accessibility.framework */; };
+		864A20672DF5E849009F0E9B /* model_quantized.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 864A20642DF5E849009F0E9B /* model_quantized.onnx */; };
+		864A20682DF5E849009F0E9B /* tokenizer_config.json in Resources */ = {isa = PBXBuildFile; fileRef = 864A20662DF5E849009F0E9B /* tokenizer_config.json */; };
+		864A20692DF5E849009F0E9B /* config.json in Resources */ = {isa = PBXBuildFile; fileRef = 864A20632DF5E849009F0E9B /* config.json */; };
+		864A206A2DF5E849009F0E9B /* tokenizer.json in Resources */ = {isa = PBXBuildFile; fileRef = 864A20652DF5E849009F0E9B /* tokenizer.json */; };
+		864A206C2DF5E9EC009F0E9B /* libonnxruntime.1.22.0.dylib in Copy Files */ = {isa = PBXBuildFile; fileRef = 867494E62DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		864A20712DF5F075009F0E9B /* OrtWrapper.c in Sources */ = {isa = PBXBuildFile; fileRef = 864A20702DF5F075009F0E9B /* OrtWrapper.c */; };
+		864A20862DF6947C009F0E9B /* kokoro_tokenizer.spec in Resources */ = {isa = PBXBuildFile; fileRef = 864A20852DF69469009F0E9B /* kokoro_tokenizer.spec */; };
+		864A208A2DF69B89009F0E9B /* vocab.txt in Resources */ = {isa = PBXBuildFile; fileRef = 864A20892DF69B89009F0E9B /* vocab.txt */; };
+		864A208C2DF6A241009F0E9B /* kokoro_tokenizer in Resources */ = {isa = PBXBuildFile; fileRef = 864A208B2DF6A241009F0E9B /* kokoro_tokenizer */; };
+		867494E82DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 867494E62DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib */; };
+		869E21962DEE31C800FB51A5 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 869E21932DEE317100FB51A5 /* ApplicationServices.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		864A206B2DF5E9CE009F0E9B /* Copy Files */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				864A206C2DF5E9EC009F0E9B /* libonnxruntime.1.22.0.dylib in Copy Files */,
+			);
+			name = "Copy Files";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		863114552DEE361E00A063B7 /* Accessibility.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accessibility.framework; path = System/Library/Frameworks/Accessibility.framework; sourceTree = SDKROOT; };
+		864A20632DF5E849009F0E9B /* config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = config.json; sourceTree = "<group>"; };
+		864A20642DF5E849009F0E9B /* model_quantized.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = model_quantized.onnx; sourceTree = "<group>"; };
+		864A20652DF5E849009F0E9B /* tokenizer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = tokenizer.json; sourceTree = "<group>"; };
+		864A20662DF5E849009F0E9B /* tokenizer_config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = tokenizer_config.json; sourceTree = "<group>"; };
+		864A20702DF5F075009F0E9B /* OrtWrapper.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = OrtWrapper.c; sourceTree = "<group>"; };
+		864A20852DF69469009F0E9B /* kokoro_tokenizer.spec */ = {isa = PBXFileReference; lastKnownFileType = text; path = kokoro_tokenizer.spec; sourceTree = "<group>"; };
+		864A20892DF69B89009F0E9B /* vocab.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = vocab.txt; sourceTree = "<group>"; };
+		864A208B2DF6A241009F0E9B /* kokoro_tokenizer */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.executable"; name = kokoro_tokenizer; path = dist/kokoro_tokenizer; sourceTree = "<group>"; };
+		867494E62DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libonnxruntime.1.22.0.dylib; sourceTree = "<group>"; };
+		867494E72DF55F1A004CE7C4 /* onnxruntime_c_api.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = onnxruntime_c_api.h; sourceTree = "<group>"; };
 		867C5A962DEA61140023C6DB /* BetterTTS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetterTTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		869E21932DEE317100FB51A5 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -23,6 +64,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				863114562DEE361F00A063B7 /* Accessibility.framework in Frameworks */,
+				867494E82DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib in Frameworks */,
+				869E21962DEE31C800FB51A5 /* ApplicationServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -32,7 +76,18 @@
 		867C5A8D2DEA61140023C6DB = {
 			isa = PBXGroup;
 			children = (
+				864A208B2DF6A241009F0E9B /* kokoro_tokenizer */,
+				864A20892DF69B89009F0E9B /* vocab.txt */,
+				864A20852DF69469009F0E9B /* kokoro_tokenizer.spec */,
+				864A20702DF5F075009F0E9B /* OrtWrapper.c */,
+				864A20632DF5E849009F0E9B /* config.json */,
+				864A20642DF5E849009F0E9B /* model_quantized.onnx */,
+				864A20652DF5E849009F0E9B /* tokenizer.json */,
+				864A20662DF5E849009F0E9B /* tokenizer_config.json */,
+				867494E62DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib */,
+				867494E72DF55F1A004CE7C4 /* onnxruntime_c_api.h */,
 				867C5A982DEA61140023C6DB /* BetterTTS */,
+				869E21922DEE317100FB51A5 /* Frameworks */,
 				867C5A972DEA61140023C6DB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,6 +100,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		869E21922DEE317100FB51A5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				863114552DEE361E00A063B7 /* Accessibility.framework */,
+				869E21932DEE317100FB51A5 /* ApplicationServices.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -55,6 +119,8 @@
 				867C5A922DEA61140023C6DB /* Sources */,
 				867C5A932DEA61140023C6DB /* Frameworks */,
 				867C5A942DEA61140023C6DB /* Resources */,
+				864A20782DF66E41009F0E9B /* Copy Tokenizer Binary */,
+				864A206B2DF5E9CE009F0E9B /* Copy Files */,
 			);
 			buildRules = (
 			);
@@ -109,16 +175,45 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				864A208C2DF6A241009F0E9B /* kokoro_tokenizer in Resources */,
+				864A208A2DF69B89009F0E9B /* vocab.txt in Resources */,
+				864A20672DF5E849009F0E9B /* model_quantized.onnx in Resources */,
+				864A20682DF5E849009F0E9B /* tokenizer_config.json in Resources */,
+				864A20692DF5E849009F0E9B /* config.json in Resources */,
+				864A20862DF6947C009F0E9B /* kokoro_tokenizer.spec in Resources */,
+				864A206A2DF5E849009F0E9B /* tokenizer.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		864A20782DF66E41009F0E9B /* Copy Tokenizer Binary */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Tokenizer Binary";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Path to built tokenizer\nTOKENIZER_SRC=\"$SRCROOT/../dist/kokoro_tokenizer\"\n\n# Destination: inside app bundle Resources\nTOKENIZER_DST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/kokoro_tokenizer\"\n\n# Copy it only if it exists\nif [ -f \"$TOKENIZER_SRC\" ]; then\n  cp \"$TOKENIZER_SRC\" \"$TOKENIZER_DST\"\n  chmod +x \"$TOKENIZER_DST\"\n  echo \"✅ Copied kokoro_tokenizer to Resources\"\nelse\n  echo \"⚠️ Tokenizer binary not found at $TOKENIZER_SRC\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		867C5A922DEA61140023C6DB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				864A20712DF5F075009F0E9B /* OrtWrapper.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -258,16 +353,20 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/Frameworks/ONNXRuntime/**";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Frameworks/ONNXRuntime";
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.BetterTTS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "BetterTTS/BetterTTS-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -285,16 +384,20 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/Frameworks/ONNXRuntime/**";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Frameworks/ONNXRuntime";
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.BetterTTS;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "BetterTTS/BetterTTS-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
