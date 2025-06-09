@@ -1,37 +1,17 @@
-import Cocoa
-import AVFoundation // For AVAudioPlayer
+// File: AppDelegate.swift
 
-class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    var window: NSWindow!
-    var mainViewController: MainViewController!
+import Cocoa
+
+// Note: There is NO @main attribute here. BetterTTSApp.swift is the app's entry point.
+class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-
-        // Create the main view controller
-        mainViewController = MainViewController()
-
-        // Create the window
-        let contentRect = NSRect(x: 0, y: 0, width: 320, height: 280)
-        window = NSWindow(
-            contentRect: contentRect,
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.center()
-        window.title = "BetterTTS"
-        window.contentViewController = mainViewController
-        window.makeKeyAndOrderFront(nil)
-
-        NSApp.windows.first?.delegate = self
+        // The window is now created and managed by the SwiftUI lifecycle.
+        // We no longer need any window creation code here.
+        print("✅ Application has finished launching.")
     }
 
-    func applicationWillTerminate(_ aNotification: Notification) {}
-
-    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
-        return true
-    }
-
+    // This is a helpful function to ensure the app quits when the main window is closed.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }

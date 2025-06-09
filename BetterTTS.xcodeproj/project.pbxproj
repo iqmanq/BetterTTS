@@ -19,6 +19,7 @@
 		864A208C2DF6A241009F0E9B /* kokoro_tokenizer in Resources */ = {isa = PBXBuildFile; fileRef = 864A208B2DF6A241009F0E9B /* kokoro_tokenizer */; };
 		867494E82DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 867494E62DF55F1A004CE7C4 /* libonnxruntime.1.22.0.dylib */; };
 		869E21962DEE31C800FB51A5 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 869E21932DEE317100FB51A5 /* ApplicationServices.framework */; };
+		86BF1CDE2DF6C771008FAFC7 /* voices.json in Resources */ = {isa = PBXBuildFile; fileRef = 86BF1CDD2DF6C771008FAFC7 /* voices.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -49,6 +50,7 @@
 		867494E72DF55F1A004CE7C4 /* onnxruntime_c_api.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = onnxruntime_c_api.h; sourceTree = "<group>"; };
 		867C5A962DEA61140023C6DB /* BetterTTS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetterTTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		869E21932DEE317100FB51A5 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
+		86BF1CDD2DF6C771008FAFC7 /* voices.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = voices.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -76,6 +78,7 @@
 		867C5A8D2DEA61140023C6DB = {
 			isa = PBXGroup;
 			children = (
+				86BF1CDD2DF6C771008FAFC7 /* voices.json */,
 				864A208B2DF6A241009F0E9B /* kokoro_tokenizer */,
 				864A20892DF69B89009F0E9B /* vocab.txt */,
 				864A20852DF69469009F0E9B /* kokoro_tokenizer.spec */,
@@ -175,6 +178,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				86BF1CDE2DF6C771008FAFC7 /* voices.json in Resources */,
 				864A208C2DF6A241009F0E9B /* kokoro_tokenizer in Resources */,
 				864A208A2DF69B89009F0E9B /* vocab.txt in Resources */,
 				864A20672DF5E849009F0E9B /* model_quantized.onnx in Resources */,
