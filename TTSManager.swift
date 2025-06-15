@@ -28,7 +28,6 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     private var nextBufferToPlay: (id: Int, buffer: AVAudioPCMBuffer)?
     private var currentlyPlayingId: Int = -1
     private var isFetchingNextChunk: Bool = false
-    private var generationTimeoutTask: Task<Void, Never>?
     
     // Screen Capture state
     private var selectionWindow: NSWindow?
@@ -88,13 +87,14 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     // MARK: - Main Pipeline
     
     func readFromSelectionRectangle() {
-        guard !isGenerating, let rect = selectionRect else { return }
+        guard !isGenerating && !isPlaying, let rect = selectionRect else { return }
         
         Task {
             self.isGenerating = true
             self.canPlay = false
             self.statusMessage = "Reading screen..."
             await performOcr(on: rect)
+            print("🔍 Starting OCR on rect: \(rect)")
         }
     }
     
@@ -111,7 +111,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
                     }
                     
                     let recognizedText = observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
-                    
+                    print("🧠 OCR recognized text: '\(recognizedText)'")
                     if recognizedText.isEmpty {
                         self.statusMessage = "No text found."; self.isGenerating = false
                     } else {
@@ -131,45 +131,44 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     
     private func startStreamingPipeline(with fullText: String) {
         print("▶️ Starting new streaming pipeline.")
-        stop()
+        resetPipeline()
         isGenerating = true
         
-        let words = fullText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
-        self.textChunks = words.chunked(into: 10).map { $0.joined(separator: " ") }.enumerated().map { (id: $0.offset, text: $0.element) }
-        
+        let punctuationSet = CharacterSet(charactersIn: ".!?,;:•—")
+        let trimmedText = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let chunks: [String]
+        if trimmedText.rangeOfCharacter(from: punctuationSet) != nil {
+            // Split at punctuation boundaries
+            chunks = trimmedText.components(separatedBy: punctuationSet)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        } else {
+            // Fallback: split by words every 10
+            let words = trimmedText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+            let wordChunks = words.chunked(into: 10)
+            chunks = wordChunks.map { $0.joined(separator: " ") }
+        }
+
+        self.textChunks = chunks.enumerated().map { (id: $0.offset, text: $0.element) }
+
         guard !textChunks.isEmpty else {
             print("No text chunks to process."); resetPipeline(); return
         }
 
         let firstChunk = textChunks[0]
         self.statusMessage = "Generating first audio chunk..."
-        
-        // --- ADDED TIMEOUT ---
-        // Failsafe to prevent getting stuck forever.
-        generationTimeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
-            if !Task.isCancelled {
-                print("❌ Generation timed out.")
-                resetPipeline()
-            }
-        }
-
+        print("📤 Sending chunk to generator: '\(firstChunk.text)'")
         generator.generate(text: firstChunk.text, voice: selectedVoice) { [weak self] result in
-            guard let self = self else { return }
-            
-            self.generationTimeoutTask?.cancel() // Cancel the timeout since we got a result.
-            
-            guard self.isGenerating else { return } // Ensure we are still in a valid state
+            guard let self = self, self.currentlyPlayingId == -1 else { return }
             
             self.isGenerating = false
             
             switch result {
             case .success(let audioURL):
                 guard let buffer = self.createBuffer(from: audioURL) else {
-                    print("❌ Failed to create buffer for the first chunk.")
                     self.resetPipeline(); return
                 }
-                print("  ✅ First chunk (ID 0) is ready to play.")
                 self.playBuffer(buffer, withId: firstChunk.id)
                 
             case .failure(let error):
@@ -178,7 +177,6 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
             }
         }
     }
-    
     private func preloadNextChunk() {
         guard !isFetchingNextChunk else { return }
         
@@ -199,12 +197,9 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
                 if let buffer = self.createBuffer(from: audioURL) {
                     print("  ✅ Pre-loaded chunk ID \(chunkToFetch.id).")
                     self.nextBufferToPlay = (id: chunkToFetch.id, buffer: buffer)
-                    // If the player is waiting for this specific chunk, play it now.
-                    if self.player.isPlaying && self.currentlyPlayingId == nextId - 1 {
-                        self.handleChunkFinished()
-                    }
-                } else {
-                    print("❌ Failed to create buffer for chunk ID \(chunkToFetch.id).")
+                    
+                    print("   kickstarting stalled player.")
+                    self.handleChunkFinished()
                 }
             case .failure(let error):
                 print("❌ Failed to generate chunk ID \(chunkToFetch.id): \(error)")
@@ -216,6 +211,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         self.currentlyPlayingId = id
         self.statusMessage = "Playing chunk \(id + 1) of \(textChunks.count)..."
         self.canPlay = true
+        self.isPlaying = true
         
         player.scheduleBuffer(buffer, at: nil, options: []) { [weak self] in
             DispatchQueue.main.async {
@@ -226,28 +222,32 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         if !player.isPlaying {
             player.play()
         }
-        self.isPlaying = true
         
         preloadNextChunk()
     }
     
     private func handleChunkFinished() {
+        
+        self.isPlaying = false
+        
         if let next = nextBufferToPlay, next.id == currentlyPlayingId + 1 {
             print("  ▶️ Playing pre-loaded chunk ID \(next.id).")
             self.nextBufferToPlay = nil
             playBuffer(next.buffer, withId: next.id)
-        } else if currentlyPlayingId == textChunks.count - 1 {
+            return
+        }
+        
+        if currentlyPlayingId >= textChunks.count - 1 {
             print("⏹️ Final chunk finished. Stopping.")
             resetPipeline()
-        } else {
-             print("... Waiting for chunk \(currentlyPlayingId + 2) to generate.")
-             // Start preloading again in case it failed before.
-             preloadNextChunk()
+            return
         }
+
+        print("... Waiting for chunk \(currentlyPlayingId + 2) to generate.")
+        self.statusMessage = "Generating chunk \(currentlyPlayingId + 2)..."
     }
     
     private func resetPipeline() {
-        generationTimeoutTask?.cancel()
         player.stop()
         isPlaying = false
         canPlay = false
@@ -262,7 +262,10 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     private func createBuffer(from url: URL) -> AVAudioPCMBuffer? {
         do {
             let audioFile = try AVAudioFile(forReading: url)
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: AVAudioFrameCount(audioFile.length)) else { return nil }
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: AVAudioFrameCount(audioFile.length)) else {
+                print("❌ Could not create buffer with format: \(audioFile.processingFormat)")
+                return nil
+            }
             try audioFile.read(into: buffer)
             try? FileManager.default.removeItem(at: url)
             return buffer
@@ -275,7 +278,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     // MARK: - UI and Screen Capture (unchanged)
     
     func startAdjustingSelection() {
-        guard !isGenerating else { return }
+        guard !isGenerating && !isPlaying else { return }
         let rect = selectionRect ?? NSRect(x: 100, y: 100, width: 400, height: 300)
         let window = SelectionWindow(contentRect: rect)
         self.selectionWindow = window
@@ -294,18 +297,34 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     }
     
     private func captureScreen(rect: CGRect) async throws -> CGImage? {
+        guard let screen = NSScreen.screens.first(where: { $0.frame.intersects(rect) }) else {
+            throw NSError(domain: "TTSManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Could not find screen for rect: \(rect)"])
+        }
+
+        let captureRectTopLeft = CGRect(
+            x: rect.origin.x,
+            y: rect.origin.y,
+            width: rect.width,
+            height: rect.height
+        )
+
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-        
-        guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
+
+        guard let display = content.displays.first(where: { $0.frame.intersects(captureRectTopLeft) }) else {
             throw NSError(domain: "TTSManager", code: 404, userInfo: [NSLocalizedDescriptionKey: "Could not find a display for the selection."])
         }
 
-        let sourceRect = CGRect(x: rect.origin.x - display.frame.origin.x, y: rect.origin.y - display.frame.origin.y, width: rect.width, height: rect.height)
-        
         let config = SCStreamConfiguration()
-        config.sourceRect = sourceRect
-        config.width = Int(rect.width)
-        config.height = Int(rect.height)
+        let localX = captureRectTopLeft.origin.x - display.frame.origin.x
+        let localY = display.frame.height - (captureRectTopLeft.origin.y - display.frame.origin.y) - captureRectTopLeft.height
+        config.sourceRect = CGRect(
+            x: localX,
+            y: localY,
+            width: captureRectTopLeft.width,
+            height: captureRectTopLeft.height
+        )
+        config.width = Int(captureRectTopLeft.width)
+        config.height = Int(captureRectTopLeft.height)
         
         let filter = SCContentFilter(display: display, excludingWindows: [])
         captureStream = SCStream(filter: filter, configuration: config, delegate: self)

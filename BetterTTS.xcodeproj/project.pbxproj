@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		86522EB02DFD1410002AC727 /* with_quant in CopyFiles */ = {isa = PBXBuildFile; fileRef = 86522EAF2DFD1410002AC727 /* with_quant */; };
 		865DFDE32DFB482B0052E3C6 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDF2DFB482B0052E3C6 /* MenuView.swift */; };
 		865DFDE42DFB482B0052E3C6 /* TTSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDE22DFB482B0052E3C6 /* TTSManager.swift */; };
 		865DFDE52DFB482B0052E3C6 /* AudioGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDD2DFB482B0052E3C6 /* AudioGenerator.swift */; };
@@ -15,6 +14,7 @@
 		865DFDE72DFB482B0052E3C6 /* Array+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDC2DFB482B0052E3C6 /* Array+Extensions.swift */; };
 		865DFDE82DFB482B0052E3C6 /* SelectionWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDE12DFB482B0052E3C6 /* SelectionWindow.swift */; };
 		865DFDE92DFB482B0052E3C6 /* AudioPlayerClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDE2DFB482B0052E3C6 /* AudioPlayerClass.swift */; };
+		86CA70962DFE82B2003C671A /* with_quant in CopyFiles */ = {isa = PBXBuildFile; fileRef = 86CA70952DFE82B2003C671A /* with_quant */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,14 +24,13 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
-				86522EB02DFD1410002AC727 /* with_quant in CopyFiles */,
+				86CA70962DFE82B2003C671A /* with_quant in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		86522EAF2DFD1410002AC727 /* with_quant */ = {isa = PBXFileReference; lastKnownFileType = folder; path = with_quant; sourceTree = "<group>"; };
 		865DFDCD2DFB47E00052E3C6 /* BetterTTS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetterTTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		865DFDDC2DFB482B0052E3C6 /* Array+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Extensions.swift"; sourceTree = "<group>"; };
 		865DFDDD2DFB482B0052E3C6 /* AudioGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerator.swift; sourceTree = "<group>"; };
@@ -40,6 +39,7 @@
 		865DFDE02DFB482B0052E3C6 /* SelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionView.swift; sourceTree = "<group>"; };
 		865DFDE12DFB482B0052E3C6 /* SelectionWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionWindow.swift; sourceTree = "<group>"; };
 		865DFDE22DFB482B0052E3C6 /* TTSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSManager.swift; sourceTree = "<group>"; };
+		86CA70952DFE82B2003C671A /* with_quant */ = {isa = PBXFileReference; lastKnownFileType = folder; path = with_quant; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -64,7 +64,7 @@
 		865DFDC42DFB47DF0052E3C6 = {
 			isa = PBXGroup;
 			children = (
-				86522EAF2DFD1410002AC727 /* with_quant */,
+				86CA70952DFE82B2003C671A /* with_quant */,
 				865DFDCF2DFB47E00052E3C6 /* BetterTTS */,
 				865DFDCE2DFB47E00052E3C6 /* Products */,
 				865DFDDC2DFB482B0052E3C6 /* Array+Extensions.swift */,

@@ -4,7 +4,7 @@ import AVFoundation
 class AudioGenerator {
     init() {}
 
-    /// Runs the Python script and converts its Int16 PCM output to a normalized, stereo Float32 WAV file.
+    /// Runs the Python script and converts its Int16 PCM output to interleaved stereo 16-bit PCM WAV file.
     func generate(text: String, voice: String, completion: @escaping (Result<URL, Error>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
             guard let generateAudioPath = Bundle.main.path(forResource: "generate_audio", ofType: nil, inDirectory: "with_quant") else {
@@ -14,49 +14,75 @@ class AudioGenerator {
             }
             
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            let command = "'\(generateAudioPath)' '\(text)' '\(voice)' en-us"
-            process.arguments = ["-c", command]
-
+            process.executableURL = URL(fileURLWithPath: generateAudioPath)
+            process.arguments = [text, voice, "en-us"]
+            
             let outPipe = Pipe()
             let errPipe = Pipe()
             process.standardOutput = outPipe
             process.standardError = errPipe
 
+            var outputData = Data()
+            var errorData = Data()
+
+            outPipe.fileHandleForReading.readabilityHandler = { fileHandle in
+                let data = fileHandle.availableData
+                if data.count > 0 {
+                    outputData.append(data)
+                } else {
+                    outPipe.fileHandleForReading.readabilityHandler = nil
+                }
+            }
+
+            errPipe.fileHandleForReading.readabilityHandler = { fileHandle in
+                let data = fileHandle.availableData
+                if data.count > 0 {
+                    errorData.append(data)
+                } else {
+                    errPipe.fileHandleForReading.readabilityHandler = nil
+                }
+            }
+
             do {
+                print("🧪 Launching generate_audio with args: \(process.arguments ?? [])")
                 try process.run()
                 process.waitUntilExit()
                 
-                let errorData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                // After process exits, readabilityHandler has collected data
                 if !errorData.isEmpty, let errorString = String(data: errorData, encoding: .utf8) {
                     print("--- generate_audio Subprocess Log ---\n\(errorString)\n-------------------------------------")
                 }
                 
                 if process.terminationStatus == 0 {
-                    let int16PcmData = outPipe.fileHandleForReading.readDataToEndOfFile()
-                    
-                    if int16PcmData.isEmpty {
+                    if outputData.isEmpty {
                         let error = NSError(domain: "AudioGenerator", code: 501, userInfo: [NSLocalizedDescriptionKey: "Process produced no audio data."])
                         DispatchQueue.main.async { completion(.failure(error)) }
                         return
                     }
                     
-                    let float32StereoData = self.convertInt16MonoToFloat32Stereo(int16PcmData)
+                    let trimmedOutputData: Data
+                    let trimBytes = 2400 * MemoryLayout<Int16>.size
+                    if outputData.count > trimBytes {
+                        trimmedOutputData = outputData.prefix(outputData.count - trimBytes)
+                    } else {
+                        trimmedOutputData = outputData
+                    }
+                    let stereoData = self.convertInt16MonoToStereo(trimmedOutputData)
                     
                     let sampleRate: UInt32 = 24000
-                    let bitDepth: UInt16 = 32
+                    let bitDepth: UInt16 = 16
                     let channels: UInt16 = 2
-                    let audioFormat: UInt16 = 3 // IEEE Float
+                    let audioFormat: UInt16 = 1 // PCM
                     
                     let wavHeader = self.createWavHeader(
-                        audioData: float32StereoData,
+                        audioData: stereoData,
                         sampleRate: sampleRate,
                         bitDepth: bitDepth,
                         channels: channels,
                         audioFormat: audioFormat
                     )
                     
-                    let finalWavData = wavHeader + float32StereoData
+                    let finalWavData = wavHeader + stereoData
                     
                     let tempDir = FileManager.default.temporaryDirectory
                     let outputURL = tempDir.appendingPathComponent("\(UUID().uuidString).wav")
@@ -80,25 +106,25 @@ class AudioGenerator {
         }
     }
     
-    /// Converts raw 16-bit mono PCM data into 32-bit float stereo PCM data by normalizing.
-    private func convertInt16MonoToFloat32Stereo(_ int16Data: Data) -> Data {
+    /// Converts raw 16-bit mono PCM data into interleaved 16-bit stereo PCM data.
+    private func convertInt16MonoToStereo(_ int16Data: Data) -> Data {
         let frameCount = int16Data.count / MemoryLayout<Int16>.size
-        var float32Data = Data(capacity: frameCount * MemoryLayout<Float32>.size * 2)
+        var stereoData = Data(capacity: frameCount * MemoryLayout<Int16>.size * 2)
 
         int16Data.withUnsafeBytes { rawBufferPointer in
             let int16Pointer = rawBufferPointer.bindMemory(to: Int16.self).baseAddress!
-            
+
             for i in 0..<frameCount {
-                let intSample = int16Pointer[i]
-                var floatSample = Float(intSample) / 32767.0
-                
-                withUnsafeBytes(of: &floatSample) { floatBytes in
-                    float32Data.append(contentsOf: floatBytes) // Left Channel
-                    float32Data.append(contentsOf: floatBytes) // Right Channel
-                }
+                let sample = int16Pointer[i]
+                var left = sample
+                var right = sample
+
+                withUnsafeBytes(of: &left) { stereoData.append(contentsOf: $0) }
+                withUnsafeBytes(of: &right) { stereoData.append(contentsOf: $0) }
             }
         }
-        return float32Data
+
+        return stereoData
     }
 
     private func createWavHeader(audioData: Data, sampleRate: UInt32, bitDepth: UInt16, channels: UInt16, audioFormat: UInt16) -> Data {
