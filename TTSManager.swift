@@ -17,7 +17,14 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     @Published private(set) var isGenerating: Bool = false
     @Published private(set) var isPlaying: Bool = false
     @Published private(set) var canPlay: Bool = false
-    
+    @Published var isAutoScrollEnabled: Bool = false {
+        didSet {
+            if isAutoScrollEnabled {
+                print("✅ Auto scroll enabled — calling toggleAutoScroll()")
+                toggleAutoScroll()
+            }
+        }
+    }
     // MARK: - Core Components
     private let generator = AudioGenerator()
     private let engine = AVAudioEngine()
@@ -28,12 +35,28 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     private var nextBufferToPlay: (id: Int, buffer: AVAudioPCMBuffer)?
     private var currentlyPlayingId: Int = -1
     private var isFetchingNextChunk: Bool = false
+    private var previouslyReadText: String = ""
     
-    // Screen Capture state
-    private var selectionWindow: NSWindow?
+    // MARK: - Screen Capture state
     private var captureStream: SCStream?
     private var captureContinuation: CheckedContinuation<CGImage?, Error>?
+    private var hasCapturedFrame = false
+    
+    private lazy var selectionWindow: SelectionWindow = {
+        // This code runs only once to create our persistent window.
+        let window = SelectionWindow(contentRect: .zero)
+        let selectionView = SelectionView(frame: .zero)
+        window.contentView = selectionView
 
+        // The closure now safely updates the manager, as the window lifecycle is stable.
+        selectionView.onSelectionEnded = { [weak self] finalRect in
+            self?.selectionRect = finalRect
+        }
+        return window
+    }()
+
+    // MARK: - Initialize Voices and Audio Engine
+    
     override init() {
         let voiceNames = ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx", "am_puck", "am_santa", "bf_alice", "bf_emma", "bf_isabella", "bf_lily", "bm_daniel", "bm_fable", "bm_george", "bm_lewis", "ef_dora", "em_alex", "em_santa", "ff_siwis", "hf_alpha", "hf_beta", "hm_omega", "hm_psi", "if_sara", "im_nicola", "jf_alpha", "jf_gongitsune", "jf_nezumi", "jf_tebukuro", "jm_kumo", "pf_dora", "pm_alex", "pm_santa", "zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi"]
         self.availableVoices = voiceNames
@@ -54,7 +77,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
 
         engine.connect(player, to: engine.mainMixerNode, format: audioFormat)
         
-        player.volume = 0.1
+        player.volume = 0.5
         
         do {
             try engine.start()
@@ -84,11 +107,96 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         resetPipeline()
     }
     
+    func toggleAutoScroll() {
+        // Create a default selection rectangle if one doesn't already exist.
+        if selectionRect == nil {
+            if let screen = NSScreen.main {
+                let screenFrame = screen.visibleFrame
+                let defaultWidth: CGFloat = 400
+                let defaultHeight: CGFloat = 300
+                self.selectionRect = NSRect(
+                    x: screenFrame.midX - defaultWidth / 2,
+                    y: screenFrame.midY - defaultHeight / 2,
+                    width: defaultWidth,
+                    height: defaultHeight
+                )
+                print("🆕 Created default selectionRect: \(self.selectionRect!)")
+            } else {
+                print("❌ No screen available to create a default selection rectangle.")
+                return
+            }
+        }
+
+        guard var rect = self.selectionRect else { return }
+        let selfPID = ProcessInfo.processInfo.processIdentifier
+
+        // Get a list of on-screen windows, excluding desktop elements.
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]],
+              let mainScreen = NSScreen.main else {
+            print("❌ Failed to get the window list or main screen.")
+            return
+        }
+
+        var targetWindowBounds: CGRect?
+
+        // The window list is ordered from front-to-back. Find the first valid window that isn't ours.
+        for windowInfo in windows {
+            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+                  ownerPID != selfPID,
+                  let windowLayer = windowInfo[kCGWindowLayer as String] as? Int,
+                  windowLayer == 0, // Standard window layer
+                  let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+                  let cgBounds = CGRect(dictionaryRepresentation: boundsDict as CFDictionary),
+                  cgBounds.height > 50 else { // A basic filter to ignore small or invalid windows
+                continue
+            }
+
+            // This is the topmost window of another application.
+            targetWindowBounds = cgBounds
+            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
+            print("🎯 Found target window: \(ownerName) with bounds \(cgBounds)")
+            break
+        }
+
+        guard let windowBounds = targetWindowBounds else {
+            print("❌ Could not find a suitable target window to snap to.")
+            return
+        }
+
+        // CGWindowList coordinates are top-left. We need to convert to AppKit's bottom-left system.
+        let screenHeight = mainScreen.frame.height
+        
+        // The Y from CGWindowList is the distance from the top of the screen to the top of the window.
+        // The bottom edge of the window (in top-down coordinates) is `windowBounds.origin.y + windowBounds.height`.
+        // The bottom edge in AppKit's bottom-up coordinates is therefore:
+        let windowBottomY_AppKit = screenHeight - (windowBounds.origin.y + windowBounds.height)
+
+        // Now, we adjust the selection rectangle's bottom edge to match the window's bottom edge.
+        let currentTopY = rect.maxY
+        let newBottomY = windowBottomY_AppKit
+        
+        // Calculate the new height, ensuring it has a minimum value.
+        let newHeight = max(50, currentTopY - newBottomY)
+        
+        // Apply the new position and size to our selection rectangle.
+        rect.origin.y = newBottomY
+        rect.size.height = newHeight
+        self.selectionRect = rect
+
+        print("🟢 Adjusted selection rect to: \(rect)")
+
+        // Display the selection window immediately with its new, adjusted frame.
+        startAdjustingSelection()
+    }
+    
     // MARK: - Main Pipeline
     
     func readFromSelectionRectangle() {
         guard !isGenerating && !isPlaying, let rect = selectionRect else { return }
-        
+       
+        if isAutoScrollEnabled {
+            }
+
         Task {
             self.isGenerating = true
             self.canPlay = false
@@ -98,33 +206,103 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         }
     }
     
-    private func performOcr(on rect: CGRect) async {
+    private func scrollDown(by pixels: CGFloat) {
+        // This function creates a high-precision scroll event.
+        // A negative value for wheel1 scrolls down.
+        let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: Int32(-pixels), wheel2: 0, wheel3: 0)
+        scrollEvent?.post(tap: .cgSessionEventTap)
+    }
+
+    private func scrollAndReadNextPage() async {
+        
+        guard let rect = selectionRect else {
+           resetPipeline(); return // End sequence
+        }
+        
+        // 1. Scroll down by the rectangle's height precisely.
+        scrollDown(by: rect.height)
+        
+        // 2. Wait for UI to update
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
+
+        // 3. OCR the new content
+        guard let textAfterScroll = await performOcrAndGetText(on: rect) else {
+            print("🚫 OCR failed after scroll."); resetPipeline(); return
+        }
+
+        // 4. If text is identical, we've reached the end of the page
+        if textAfterScroll.trimmingCharacters(in: .whitespacesAndNewlines) == previouslyReadText.trimmingCharacters(in: .whitespacesAndNewlines) {
+            print("✅ End of page reached.");
+            statusMessage = "Auto-scroll finished."
+            resetPipeline()
+            return
+        }
+        
+        // 5. Find the new text to speak
+        var newTextToRead = textAfterScroll
+        let anchor = String(previouslyReadText.suffix(150)) // Use last 150 chars as an anchor
+        if !anchor.isEmpty, let range = textAfterScroll.range(of: anchor) {
+            newTextToRead = String(textAfterScroll[range.upperBound...])
+        }
+
+        if newTextToRead.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            print("✅ No new text detected.");
+            statusMessage = "Auto-scroll finished."
+            resetPipeline()
+            return
+        }
+
+        // 6. Update history and start the pipeline with new text
+        self.previouslyReadText = textAfterScroll
+        startStreamingPipeline(with: newTextToRead)
+    }
+    
+    private func performOcrAndGetText(on rect: CGRect) async -> String? {
         do {
             guard let capturedImage = try await captureScreen(rect: rect) else {
-                self.statusMessage = "Screen capture failed."; self.isGenerating = false; return
+                return nil
             }
+
+            let request = VNRecognizeTextRequest()
             
-            let request = VNRecognizeTextRequest { [weak self] (request, error) in
-                DispatchQueue.main.async {
-                    guard let self = self, let observations = request.results as? [VNRecognizedTextObservation] else {
-                        self?.statusMessage = "Text recognition failed."; self?.isGenerating = false; return
-                    }
-                    
-                    let recognizedText = observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
-                    print("🧠 OCR recognized text: '\(recognizedText)'")
-                    if recognizedText.isEmpty {
-                        self.statusMessage = "No text found."; self.isGenerating = false
-                    } else {
-                        self.startStreamingPipeline(with: recognizedText)
-                    }
-                }
+            let handler = VNImageRequestHandler(cgImage: capturedImage, options: [:])
+            try await Task(priority: .userInitiated) {
+                try handler.perform([request])
+            }.value
+            
+            guard let observations = request.results else {
+                return nil
             }
-            
-            try VNImageRequestHandler(cgImage: capturedImage, options: [:]).perform([request])
-            
+
+            return observations
+                .compactMap { $0.topCandidates(1).first?.string }
+                .joined(separator: " ")
+
         } catch {
             DispatchQueue.main.async {
-                self.statusMessage = "OCR Error: \(error.localizedDescription)"; self.isGenerating = false
+                self.statusMessage = "OCR Error: \(error.localizedDescription)"
+            }
+            return nil
+        }
+    }
+    
+    private func performOcr(on rect: CGRect) async {
+        self.previouslyReadText = "" // Reset on a new read
+        guard let recognizedText = await performOcrAndGetText(on: rect) else {
+            DispatchQueue.main.async {
+                self.statusMessage = "OCR failed or no text found."
+                self.isGenerating = false
+            }
+            return
+        }
+        
+        DispatchQueue.main.async {
+            if recognizedText.isEmpty {
+                self.statusMessage = "No text found."
+                self.isGenerating = false
+            } else {
+                self.previouslyReadText = recognizedText
+                self.startStreamingPipeline(with: recognizedText)
             }
         }
     }
@@ -134,20 +312,58 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         resetPipeline()
         isGenerating = true
         
-        let punctuationSet = CharacterSet(charactersIn: ".!?,;:•—")
+        let sentenceSeparators = CharacterSet(charactersIn: ".!?,;:•—|")
         let trimmedText = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let minWords = 5
+        let maxWords = 15
 
-        let chunks: [String]
-        if trimmedText.rangeOfCharacter(from: punctuationSet) != nil {
-            // Split at punctuation boundaries
-            chunks = trimmedText.components(separatedBy: punctuationSet)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-        } else {
-            // Fallback: split by words every 10
-            let words = trimmedText.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
-            let wordChunks = words.chunked(into: 10)
-            chunks = wordChunks.map { $0.joined(separator: " ") }
+        // Step 1: Split text into sentences based on strong punctuation
+        let sentences = trimmedText.components(separatedBy: sentenceSeparators)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        // Step 2: Smartly merge sentences to form chunks within min and max words range
+        var chunks: [String] = []
+        var currentChunkWords: [String] = []
+
+        func flushCurrentChunk() {
+            if !currentChunkWords.isEmpty {
+                let chunkText = currentChunkWords.joined(separator: " ")
+                chunks.append(chunkText)
+                currentChunkWords.removeAll()
+            }
+        }
+
+        for sentence in sentences {
+            let words = sentence.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+            // If current chunk + this sentence fits maxWords, append it
+            if (currentChunkWords.count + words.count) <= maxWords {
+                currentChunkWords.append(contentsOf: words)
+            } else {
+                // If current chunk is big enough, flush it first
+                if currentChunkWords.count >= minWords {
+                    flushCurrentChunk()
+                    currentChunkWords.append(contentsOf: words)
+                } else {
+                    // Otherwise, try to add sentence anyway (allow some flexibility)
+                    currentChunkWords.append(contentsOf: words)
+                    if currentChunkWords.count >= maxWords {
+                        flushCurrentChunk()
+                    }
+                }
+            }
+        }
+        // Flush any remaining words as last chunk
+        flushCurrentChunk()
+
+        // Step 3: Post-process: if last chunk is too small, merge into previous chunk
+        if chunks.count >= 2 {
+            let lastChunkWords = chunks.last!.components(separatedBy: .whitespacesAndNewlines)
+            if lastChunkWords.count < minWords {
+                let secondLastChunk = chunks[chunks.count - 2]
+                chunks[chunks.count - 2] = secondLastChunk + " " + chunks.last!
+                chunks.removeLast()
+            }
         }
 
         self.textChunks = chunks.enumerated().map { (id: $0.offset, text: $0.element) }
@@ -177,6 +393,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
             }
         }
     }
+    
     private func preloadNextChunk() {
         guard !isFetchingNextChunk else { return }
         
@@ -227,19 +444,68 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     }
     
     private func handleChunkFinished() {
-        
         self.isPlaying = false
-        
+
         if let next = nextBufferToPlay, next.id == currentlyPlayingId + 1 {
             print("  ▶️ Playing pre-loaded chunk ID \(next.id).")
             self.nextBufferToPlay = nil
             playBuffer(next.buffer, withId: next.id)
             return
         }
-        
+
         if currentlyPlayingId >= textChunks.count - 1 {
-            print("⏹️ Final chunk finished. Stopping.")
-            resetPipeline()
+            print("▶️ Final chunk now playing. Monitoring for silence before proceeding...")
+            Task {
+                let mixer = self.engine.mainMixerNode
+                let bus = 0
+                mixer.removeTap(onBus: bus)
+
+                let silenceThreshold: Float = -40.0 // dB
+                let silenceTimeout: TimeInterval = 1.5
+                var silentSince: Date?
+                var finished = false
+
+                mixer.installTap(onBus: bus, bufferSize: 1024, format: mixer.outputFormat(forBus: bus)) { buffer, _ in
+                    guard let channelData = buffer.floatChannelData?[0] else { return }
+                    
+                    let frameCount = Int(buffer.frameLength)
+                    if frameCount == 0 { return }
+                    
+                    var rms: Float = 0.0
+                    for i in 0..<frameCount {
+                        rms += channelData[i] * channelData[i]
+                    }
+                    rms = sqrt(rms / Float(frameCount))
+                    let avgPower = 20 * log10(rms + 1e-7)
+                                        
+                    if avgPower < silenceThreshold {
+                        if silentSince == nil {
+                            silentSince = Date()
+                        } else if Date().timeIntervalSince(silentSince!) > silenceTimeout {
+                            if !finished {
+                                finished = true
+                                mixer.removeTap(onBus: bus)
+                                Task {
+                                    if self.isAutoScrollEnabled {
+                                        print("▶️ Silence detected. Performing one-time scroll and read.")
+                                        await self.scrollAndReadNextPage()
+                                    } else {
+                                        print("⏹️ Silence detected. Stopping...")
+                                        self.resetPipeline()
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        silentSince = nil
+                    }
+                }
+
+                while !finished {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+            }
+            
             return
         }
 
@@ -257,6 +523,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         nextBufferToPlay = nil
         currentlyPlayingId = -1
         statusMessage = "Ready"
+        print("Ceased all ongoing tasks.")
     }
     
     private func createBuffer(from url: URL) -> AVAudioPCMBuffer? {
@@ -275,29 +542,56 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         }
     }
     
-    // MARK: - UI and Screen Capture (unchanged)
+    // MARK: - UI and Screen Capture
     
     func startAdjustingSelection() {
-        guard !isGenerating && !isPlaying else { return }
-        let rect = selectionRect ?? NSRect(x: 100, y: 100, width: 400, height: 300)
-        let window = SelectionWindow(contentRect: rect)
-        self.selectionWindow = window
-        let selectionView = SelectionView(frame: .zero)
-        self.selectionWindow?.contentView = selectionView
-        selectionView.onSelectionEnded = { [weak self] finalRect in self?.selectionRect = finalRect }
-        self.selectionWindow?.makeKeyAndOrderFront(nil)
+        // Only create a default rect if none exists
+        if selectionRect == nil {
+            if let screen = NSScreen.main {
+                let screenFrame = screen.visibleFrame
+                let defaultWidth: CGFloat = 400
+                let defaultHeight: CGFloat = 300
+                let defaultRect = NSRect(
+                    x: screenFrame.midX - defaultWidth / 2,
+                    y: screenFrame.midY - defaultHeight / 2,
+                    width: defaultWidth,
+                    height: defaultHeight
+                )
+                self.selectionRect = defaultRect
+                print("🆕 Created default selectionRect in Adjust Selection: \(defaultRect)")
+            } else {
+                print("❌ No screen available to create default selectionRect.")
+                return
+            }
+        }
+
+        guard let rect = selectionRect else {
+            print("⚠️ No selectionRect available for adjustment after default creation.")
+            return
+        }
+
+        print("🔷 Showing updated selectionRect: \(rect)")
+
+        // Show the selection overlay window and update its frame
+        selectionWindow.setFrame(rect, display: true)
+        selectionWindow.makeKeyAndOrderFront(nil)
+
         isAdjustingSelection = true
     }
     
     func confirmSelection() {
-        guard isAdjustingSelection, let window = selectionWindow else { return }
-        selectionRect = window.frame
+        guard isAdjustingSelection else { return }
+
+        // 1. Finalize the data from the window's current frame.
+        self.selectionRect = self.selectionWindow.frame
         isAdjustingSelection = false
-        window.orderOut(nil)
+        
+        // 2. HIDE the window instead of closing it. This prevents the crash.
+        self.selectionWindow.orderOut(nil)
     }
     
     private func captureScreen(rect: CGRect) async throws -> CGImage? {
-        guard let screen = NSScreen.screens.first(where: { $0.frame.intersects(rect) }) else {
+        guard NSScreen.screens.first(where: { $0.frame.intersects(rect) }) != nil else {
             throw NSError(domain: "TTSManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Could not find screen for rect: \(rect)"])
         }
 
@@ -328,7 +622,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         
         let filter = SCContentFilter(display: display, excludingWindows: [])
         captureStream = SCStream(filter: filter, configuration: config, delegate: self)
-        
+        hasCapturedFrame = false
         try captureStream?.addStreamOutput(self, type: .screen, sampleHandlerQueue: .global(qos: .userInitiated))
         
         return try await withCheckedThrowingContinuation { continuation in
@@ -339,7 +633,8 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     
     nonisolated func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         Task { @MainActor in
-            guard sampleBuffer.isValid, let pBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+            guard sampleBuffer.isValid, let pBuffer = CMSampleBufferGetImageBuffer(sampleBuffer), !self.hasCapturedFrame else { return }
+            self.hasCapturedFrame = true
             var cgImage: CGImage?
             VTCreateCGImageFromCVPixelBuffer(pBuffer, options: nil, imageOut: &cgImage)
             try? await stream.stopCapture()
