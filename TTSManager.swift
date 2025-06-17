@@ -89,21 +89,32 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     // MARK: - Playback Controls
     
     func play() {
-        if !player.isPlaying, canPlay {
-            player.play()
+        // If we are not already in a playing state, resume.
+        if !self.isPlaying {
             self.isPlaying = true
             self.statusMessage = "Playing..."
+            player.play()
+            // Kickstart the preloading process again in case it was cancelled by pausing.
+            preloadNextChunk()
         }
     }
     
     func pause() {
-        player.pause()
-        self.isPlaying = false
-        self.statusMessage = "Paused."
+        // If we are currently playing, pause everything.
+        if self.isPlaying {
+            self.isPlaying = false
+            self.statusMessage = "Paused."
+            player.pause()
+            
+            // Cancel any pending generation and discard the next buffer.
+            self.isFetchingNextChunk = false
+            self.nextBufferToPlay = nil
+            print("⏸️ Paused by user. Pending generation cancelled.")
+        }
     }
     
     func stop() {
-        player.stop()
+        // The Stop button should always reset everything.
         resetPipeline()
     }
     
@@ -192,17 +203,22 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     // MARK: - Main Pipeline
     
     func readFromSelectionRectangle() {
-        guard !isGenerating && !isPlaying, let rect = selectionRect else { return }
+        guard !isGenerating else { return }
        
+        // This is now the entry point for starting a playback session.
+        self.isPlaying = true // Set the user's intent to "playing" immediately.
+        
         if isAutoScrollEnabled {
-            }
+            // This flag is now redundant since isPlaying controls the UI,
+            // but we'll leave it for the auto-scroll logic itself.
+        }
 
         Task {
             self.isGenerating = true
             self.canPlay = false
             self.statusMessage = "Reading screen..."
-            await performOcr(on: rect)
-            print("🔍 Starting OCR on rect: \(rect)")
+            await performOcr(on: selectionRect!)
+            print("🔍 Starting OCR on rect: \(selectionRect!)")
         }
     }
     
@@ -395,7 +411,8 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     }
     
     private func preloadNextChunk() {
-        guard !isFetchingNextChunk else { return }
+        // Only fetch the next chunk if we are in a playing state.
+        guard !isFetchingNextChunk, isPlaying else { return }
         
         let nextId = currentlyPlayingId + 1
         guard nextId < textChunks.count else { return }
@@ -405,7 +422,10 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
         self.statusMessage = "Generating chunk \(nextId + 1) of \(textChunks.count)..."
 
         generator.generate(text: chunkToFetch.text, voice: selectedVoice) { [weak self] result in
-            guard let self = self, self.isFetchingNextChunk else { return }
+            guard let self = self, self.isFetchingNextChunk else {
+                // If isFetchingNextChunk became false, it means the user paused/stopped.
+                return
+            }
             
             self.isFetchingNextChunk = false
 
@@ -415,8 +435,11 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
                     print("  ✅ Pre-loaded chunk ID \(chunkToFetch.id).")
                     self.nextBufferToPlay = (id: chunkToFetch.id, buffer: buffer)
                     
-                    print("   kickstarting stalled player.")
-                    self.handleChunkFinished()
+                    // Only kickstart the next chunk if the user is still in the playing state.
+                    if self.isPlaying {
+                        print("   Player is active, kicking off next chunk.")
+                        self.handleChunkFinished()
+                    }
                 }
             case .failure(let error):
                 print("❌ Failed to generate chunk ID \(chunkToFetch.id): \(error)")
@@ -444,7 +467,6 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     }
     
     private func handleChunkFinished() {
-        self.isPlaying = false
 
         if let next = nextBufferToPlay, next.id == currentlyPlayingId + 1 {
             print("  ▶️ Playing pre-loaded chunk ID \(next.id).")
@@ -487,7 +509,7 @@ class TTSManager: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
                                 mixer.removeTap(onBus: bus)
                                 Task {
                                     if self.isAutoScrollEnabled {
-                                        print("▶️ Silence detected. Performing one-time scroll and read.")
+                                        print("▶️ Silence detected. Performing next scroll and read.")
                                         await self.scrollAndReadNextPage()
                                     } else {
                                         print("⏹️ Silence detected. Stopping...")
