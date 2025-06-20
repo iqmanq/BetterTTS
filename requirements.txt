@@ -1,0 +1,6 @@
+kokoro_onnx
+misaki[en]
+numpy
+onnxruntime
+colorlog
+espeakng

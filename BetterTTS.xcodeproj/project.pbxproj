@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		861C72C72E03349D00CC21F4 /* tts_engine.py in Resources */ = {isa = PBXBuildFile; fileRef = 861C72C42E03349D00CC21F4 /* tts_engine.py */; };
+		864231C52E03384800F4E5F0 /* voices-v1.0.bin in Resources */ = {isa = PBXBuildFile; fileRef = 861C72C62E03349D00CC21F4 /* voices-v1.0.bin */; };
+		864231CB2E033AAC00F4E5F0 /* kokoro-v1.0.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 864231C82E033A0E00F4E5F0 /* kokoro-v1.0.onnx */; };
 		865DFDE32DFB482B0052E3C6 /* MenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDF2DFB482B0052E3C6 /* MenuView.swift */; };
 		865DFDE42DFB482B0052E3C6 /* TTSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDE22DFB482B0052E3C6 /* TTSManager.swift */; };
 		865DFDE52DFB482B0052E3C6 /* AudioGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDD2DFB482B0052E3C6 /* AudioGenerator.swift */; };
@@ -14,7 +17,11 @@
 		865DFDE72DFB482B0052E3C6 /* Array+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDC2DFB482B0052E3C6 /* Array+Extensions.swift */; };
 		865DFDE82DFB482B0052E3C6 /* SelectionWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDE12DFB482B0052E3C6 /* SelectionWindow.swift */; };
 		865DFDE92DFB482B0052E3C6 /* AudioPlayerClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865DFDDE2DFB482B0052E3C6 /* AudioPlayerClass.swift */; };
-		86CA70962DFE82B2003C671A /* with_quant in CopyFiles */ = {isa = PBXBuildFile; fileRef = 86CA70952DFE82B2003C671A /* with_quant */; };
+		869F40092E022B670066A17D /* requirements.txt in Resources */ = {isa = PBXBuildFile; fileRef = 869F40082E022B670066A17D /* requirements.txt */; };
+		869F400B2E022B8C0066A17D /* install_dependencies.py in Resources */ = {isa = PBXBuildFile; fileRef = 869F400A2E022B8C0066A17D /* install_dependencies.py */; };
+		86A250D92E034855008440C5 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 86A250D72E034855008440C5 /* lib */; };
+		86A250DA2E034855008440C5 /* share in Resources */ = {isa = PBXBuildFile; fileRef = 86A250D82E034855008440C5 /* share */; };
+		86A250DC2E0352BE008440C5 /* BetterTTS_VENV in Resources */ = {isa = PBXBuildFile; fileRef = 86A250DB2E0352BE008440C5 /* BetterTTS_VENV */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -24,13 +31,15 @@
 			dstPath = "";
 			dstSubfolderSpec = 7;
 			files = (
-				86CA70962DFE82B2003C671A /* with_quant in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		861C72C42E03349D00CC21F4 /* tts_engine.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = tts_engine.py; sourceTree = "<group>"; };
+		861C72C62E03349D00CC21F4 /* voices-v1.0.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = "voices-v1.0.bin"; sourceTree = "<group>"; };
+		864231C82E033A0E00F4E5F0 /* kokoro-v1.0.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = "kokoro-v1.0.onnx"; sourceTree = "<group>"; };
 		865DFDCD2DFB47E00052E3C6 /* BetterTTS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BetterTTS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		865DFDDC2DFB482B0052E3C6 /* Array+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Extensions.swift"; sourceTree = "<group>"; };
 		865DFDDD2DFB482B0052E3C6 /* AudioGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioGenerator.swift; sourceTree = "<group>"; };
@@ -39,7 +48,11 @@
 		865DFDE02DFB482B0052E3C6 /* SelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionView.swift; sourceTree = "<group>"; };
 		865DFDE12DFB482B0052E3C6 /* SelectionWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionWindow.swift; sourceTree = "<group>"; };
 		865DFDE22DFB482B0052E3C6 /* TTSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSManager.swift; sourceTree = "<group>"; };
-		86CA70952DFE82B2003C671A /* with_quant */ = {isa = PBXFileReference; lastKnownFileType = folder; path = with_quant; sourceTree = "<group>"; };
+		869F40082E022B670066A17D /* requirements.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = requirements.txt; sourceTree = "<group>"; };
+		869F400A2E022B8C0066A17D /* install_dependencies.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = install_dependencies.py; sourceTree = "<group>"; };
+		86A250D72E034855008440C5 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
+		86A250D82E034855008440C5 /* share */ = {isa = PBXFileReference; lastKnownFileType = folder; path = share; sourceTree = "<group>"; };
+		86A250DB2E0352BE008440C5 /* BetterTTS_VENV */ = {isa = PBXFileReference; lastKnownFileType = folder; name = BetterTTS_VENV; path = ../../Desktop/BetterTTS_VENV; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -64,7 +77,14 @@
 		865DFDC42DFB47DF0052E3C6 = {
 			isa = PBXGroup;
 			children = (
-				86CA70952DFE82B2003C671A /* with_quant */,
+				86A250DB2E0352BE008440C5 /* BetterTTS_VENV */,
+				86A250D72E034855008440C5 /* lib */,
+				86A250D82E034855008440C5 /* share */,
+				864231C82E033A0E00F4E5F0 /* kokoro-v1.0.onnx */,
+				861C72C62E03349D00CC21F4 /* voices-v1.0.bin */,
+				869F40082E022B670066A17D /* requirements.txt */,
+				869F400A2E022B8C0066A17D /* install_dependencies.py */,
+				861C72C42E03349D00CC21F4 /* tts_engine.py */,
 				865DFDCF2DFB47E00052E3C6 /* BetterTTS */,
 				865DFDCE2DFB47E00052E3C6 /* Products */,
 				865DFDDC2DFB482B0052E3C6 /* Array+Extensions.swift */,
@@ -151,6 +171,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				86A250DC2E0352BE008440C5 /* BetterTTS_VENV in Resources */,
+				864231CB2E033AAC00F4E5F0 /* kokoro-v1.0.onnx in Resources */,
+				864231C52E03384800F4E5F0 /* voices-v1.0.bin in Resources */,
+				861C72C72E03349D00CC21F4 /* tts_engine.py in Resources */,
+				869F40092E022B670066A17D /* requirements.txt in Resources */,
+				86A250D92E034855008440C5 /* lib in Resources */,
+				86A250DA2E034855008440C5 /* share in Resources */,
+				869F400B2E022B8C0066A17D /* install_dependencies.py in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

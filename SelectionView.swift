@@ -1,9 +1,10 @@
 import Cocoa
-import CoreVideo // Import the Core Video framework
+import CoreVideo
 
 class SelectionView: NSView {
     
     var onSelectionEnded: ((NSRect) -> Void)?
+    var borderColor: NSColor = .red // Default to red
 
     private enum DragHandle {
         case none, body
@@ -15,7 +16,6 @@ class SelectionView: NSView {
     
     private var dragOffset: NSPoint?
     
-    // Revert to using the CVDisplayLink for robust updates
     private var displayLink: CVDisplayLink?
     private var latestFrame: NSRect?
 
@@ -23,9 +23,9 @@ class SelectionView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        NSColor.red.withAlphaComponent(0.2).setFill()
+        self.borderColor.withAlphaComponent(0.2).setFill()
         bounds.fill()
-        NSColor.red.setStroke()
+        self.borderColor.setStroke()
         let border = NSBezierPath(rect: bounds)
         border.lineWidth = 2.0
         border.stroke()
@@ -45,11 +45,7 @@ class SelectionView: NSView {
                                  y: mouseLocationOnScreen.y - windowFrame.origin.y)
         }
         
-        // --- KEY CHANGE ---
-        // Create and start a CVDisplayLink. It runs on a separate thread,
-        // bypassing the main run loop's event tracking mode.
         let displayLinkCallback: CVDisplayLinkOutputCallback = { (displayLink, inNow, inOutputTime, flagsIn, flagsOut, displayLinkContext) -> CVReturn in
-            // The callback is on a background thread. Dispatch UI updates to the main thread.
             let view = unsafeBitCast(displayLinkContext, to: SelectionView.self)
             DispatchQueue.main.async {
                 view.updateFrame()
@@ -74,7 +70,6 @@ class SelectionView: NSView {
             guard let dragOffset = dragOffset else { return }
             newFrame.origin = NSPoint(x: mouseLocationOnScreen.x - dragOffset.x,
                                       y: mouseLocationOnScreen.y - dragOffset.y)
-        // The resize logic remains the same
         case .right:
             newFrame.size.width = mouseLocationOnScreen.x - newFrame.minX
         case .left:
@@ -118,7 +113,6 @@ class SelectionView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
-        // Stop and release the display link
         if let displayLink = displayLink {
             CVDisplayLinkStop(displayLink)
         }
@@ -135,7 +129,6 @@ class SelectionView: NSView {
         latestFrame = nil
     }
     
-    // This method is now called from the CVDisplayLink callback on the main thread
     private func updateFrame() {
         guard let newFrame = self.latestFrame, let window = self.window else { return }
         window.setFrame(newFrame, display: true)

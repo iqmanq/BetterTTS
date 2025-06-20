@@ -51,11 +51,16 @@ struct MenuView: View {
         "zf_xiaobei": "Chinese Female: Xiaobei",
         "zf_xiaoni": "Chinese Female: Xiaoni",
         "zf_xiaoxiao": "Chinese Female: Xiaoxiao",
-        "zf_xiaoyi": "Chinese Female: Xiaoyi"
+        "zf_xiaoyi": "Chinese Female: Xiaoyi",
+        "zm_yunjian": "Chinese Male: Yunjian",
+        "zm_yunxi": "Chinese Male: Yunxi",
+        "zm_yunxia": "Chinese Male: Yunxia",
+        "zm_yunyang": "Chinese Male: Yunyang"
     ]
     
     @EnvironmentObject var ttsManager: TTSManager
-    
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             
@@ -65,6 +70,12 @@ struct MenuView: View {
             
             if ttsManager.isAdjustingSelection {
                 Button("Confirm Selection") { ttsManager.confirmSelection() }
+            } else if ttsManager.isAdjustingDoNotReadZone {
+                Button("Confirm End of Page Zone") {
+                    Task { await ttsManager.confirmDoNotReadZone() }
+                }
+            } else if ttsManager.isAdjustingNextButtonClickZone {
+                Button("Confirm Click Zone") { ttsManager.confirmNextButtonClickZone() }
             } else {
                 HStack {
                     Button("Adjust Selection") { ttsManager.startAdjustingSelection() }
@@ -72,28 +83,47 @@ struct MenuView: View {
                     Button("Read Area") { ttsManager.readFromSelectionRectangle() }
                         .disabled(ttsManager.selectionRect == nil || ttsManager.isGenerating)
                 }
+                Button("Set End of Page Zone") { ttsManager.startAdjustingDoNotReadZone() }
             }
             
             Divider()
             
             HStack {
-                Button(action: { ttsManager.play() }) {
-                    Image(systemName: "play.fill")
+                Button(action: { ttsManager.skipToPreviousChunk() }) {
+                    Image(systemName: "backward.end.fill")
                 }
-                .disabled(!ttsManager.canPlay || ttsManager.isPlaying)
-                
+                .disabled(!ttsManager.canSkipBackward)
+
                 Button(action: { ttsManager.pause() }) {
                     Image(systemName: "pause.fill")
                 }
                 .disabled(!ttsManager.isPlaying)
 
+                Button(action: { ttsManager.play() }) {
+                    Image(systemName: "play.fill")
+                }
+                .disabled(!ttsManager.canPlay || ttsManager.isPlaying)
+                
                 Button(action: { ttsManager.stop() }) {
                     Image(systemName: "stop.fill")
                 }
                 .disabled(!ttsManager.canPlay && !ttsManager.isPlaying)
+
+                Button(action: { ttsManager.skipToNextChunk() }) {
+                    Image(systemName: "forward.end.fill")
+                }
+                .disabled(!ttsManager.canSkipForward)
             }
             .frame(maxWidth: .infinity)
             
+            HStack {
+                Image(systemName: "speaker.fill")
+                    .foregroundColor(.secondary)
+                Slider(value: $ttsManager.volume, in: 0...1)
+                Image(systemName: "speaker.wave.3.fill")
+                    .foregroundColor(.secondary)
+            }
+
             Picker("Voice:", selection: $ttsManager.selectedVoice) {
                 ForEach(ttsManager.availableVoices, id: \.self) { voice in
                     Text(voiceDisplayNames[voice] ?? voice).tag(voice)
@@ -101,12 +131,38 @@ struct MenuView: View {
             }
             
             Divider()
+           
+            Button(action: { ttsManager.cycleSpeed() }) {
+                Text(String(format: "Speed: %.2fx", ttsManager.currentSpeed))
+            }
+            .frame(maxWidth: .infinity)
             
+            Divider()
+
             Toggle(isOn: $ttsManager.isAutoScrollEnabled) {
                 Text("Auto Scroll & Read")
             }
             .disabled(ttsManager.isAdjustingSelection)
             
+            Divider()
+            
+            Text("Auto-Next Page").font(.caption).foregroundColor(.secondary)
+
+            Picker("Mode:", selection: $ttsManager.autoNextMode) {
+                ForEach(AutoNextMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(SegmentedPickerStyle())
+
+            // Show the appropriate button based on the selected mode
+            if ttsManager.autoNextMode == .fixedZone {
+                Button("Set Click Zone") { ttsManager.startAdjustingNextButtonClickZone() }
+            } else if ttsManager.autoNextMode == .smartOCR {
+                Button("Set End of Page Zone") { ttsManager.startAdjustingDoNotReadZone() }
+                    .help("Define the area where the app will search for a 'Next' button.")
+            }
+
             Divider()
             
             Button("Quit") {
@@ -115,5 +171,11 @@ struct MenuView: View {
         }
         .padding()
         .frame(width: 220)
+        .onChange(of: ttsManager.shouldCloseMenu) {
+            if ttsManager.shouldCloseMenu {
+                dismiss() // Close the window
+                ttsManager.shouldCloseMenu = false // Reset the signal
+            }
+        }
     }
 }

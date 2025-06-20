@@ -4,19 +4,30 @@ import AVFoundation
 class AudioGenerator {
     init() {}
 
-    /// Runs the Python script and converts its Int16 PCM output to interleaved stereo 16-bit PCM WAV file.
-    func generate(text: String, voice: String, completion: @escaping (Result<URL, Error>) -> Void) {
+    func generate(text: String, voice: String, lang: String, sessionID: String, completion: @escaping (Result<(URL, String), Error>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async {
-            guard let generateAudioPath = Bundle.main.path(forResource: "generate_audio", ofType: nil, inDirectory: "with_quant") else {
-                let error = NSError(domain: "AudioGenerator", code: 404, userInfo: [NSLocalizedDescriptionKey: "'generate_audio' executable not found."])
+            guard let bundlePath = Bundle.main.resourcePath else {
+                let error = NSError(domain: "AudioGenerator", code: 500, userInfo: [NSLocalizedDescriptionKey: "Could not locate app's resource path."])
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+
+            let venvPythonPath = URL(fileURLWithPath: bundlePath).appendingPathComponent("BetterTTS_VENV/bin/python").path
+            
+            guard let generateAudioScriptPath = Bundle.main.path(forResource: "tts_engine", ofType: "py") else {
+                let error = NSError(domain: "AudioGenerator", code: 404, userInfo: [NSLocalizedDescriptionKey: "'tts_engine.py' not found in bundle."])
                 DispatchQueue.main.async { completion(.failure(error)) }
                 return
             }
             
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: generateAudioPath)
-            process.arguments = [text, voice, "en-us"]
             
+            process.currentDirectoryURL = URL(fileURLWithPath: bundlePath)
+            process.executableURL = URL(fileURLWithPath: venvPythonPath)
+            process.arguments = [generateAudioScriptPath, text, voice, lang]
+            
+            process.environment = ProcessInfo.processInfo.environment
+
             let outPipe = Pipe()
             let errPipe = Pipe()
             process.standardOutput = outPipe
@@ -26,31 +37,21 @@ class AudioGenerator {
             var errorData = Data()
 
             outPipe.fileHandleForReading.readabilityHandler = { fileHandle in
-                let data = fileHandle.availableData
-                if data.count > 0 {
-                    outputData.append(data)
-                } else {
-                    outPipe.fileHandleForReading.readabilityHandler = nil
-                }
+                outputData.append(fileHandle.availableData)
             }
-
             errPipe.fileHandleForReading.readabilityHandler = { fileHandle in
-                let data = fileHandle.availableData
-                if data.count > 0 {
-                    errorData.append(data)
-                } else {
-                    errPipe.fileHandleForReading.readabilityHandler = nil
-                }
+                errorData.append(fileHandle.availableData)
             }
 
             do {
-                print("🧪 Launching generate_audio with args: \(process.arguments ?? [])")
                 try process.run()
                 process.waitUntilExit()
                 
-                // After process exits, readabilityHandler has collected data
+                outPipe.fileHandleForReading.readabilityHandler = nil
+                errPipe.fileHandleForReading.readabilityHandler = nil
+
                 if !errorData.isEmpty, let errorString = String(data: errorData, encoding: .utf8) {
-                    print("--- generate_audio Subprocess Log ---\n\(errorString)\n-------------------------------------")
+                    print("--- Bundled Python Subprocess Log ---\n\(errorString)\n-------------------------------------")
                 }
                 
                 if process.terminationStatus == 0 {
@@ -72,7 +73,7 @@ class AudioGenerator {
                     let sampleRate: UInt32 = 24000
                     let bitDepth: UInt16 = 16
                     let channels: UInt16 = 2
-                    let audioFormat: UInt16 = 1 // PCM
+                    let audioFormat: UInt16 = 1
                     
                     let wavHeader = self.createWavHeader(
                         audioData: stereoData,
@@ -90,11 +91,10 @@ class AudioGenerator {
                     try finalWavData.write(to: outputURL)
                     
                     DispatchQueue.main.async {
-                        completion(.success(outputURL))
+                        completion(.success((outputURL, sessionID)))
                     }
-                    
                 } else {
-                    let error = NSError(domain: "AudioGenerator", code: Int(process.terminationStatus), userInfo: [NSLocalizedDescriptionKey: "Audio generation process failed with exit code \(process.terminationStatus)."])
+                    let error = NSError(domain: "AudioGenerator", code: Int(process.terminationStatus), userInfo: [NSLocalizedDescriptionKey: "Bundled Python process failed with exit code \(process.terminationStatus)."])
                     DispatchQueue.main.async { completion(.failure(error)) }
                 }
 
@@ -105,7 +105,7 @@ class AudioGenerator {
             }
         }
     }
-    
+
     /// Converts raw 16-bit mono PCM data into interleaved 16-bit stereo PCM data.
     private func convertInt16MonoToStereo(_ int16Data: Data) -> Data {
         let frameCount = int16Data.count / MemoryLayout<Int16>.size
